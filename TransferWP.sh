@@ -10,9 +10,10 @@ db_password=$(openssl rand -base64 32)
 init_db_name="${init_domain//./_}"
 
 echo "Copying files"
-rm -rf /var/www/$domain/html
+rm -rf /var/www/$domain
+mkdir -p /var/www/$domain/logs
 cp -rf /var/www/$init_domain/html /var/www/$domain/html
-chown -R www-data:www-data /var/www/$domain/html
+chown -R www-data:www-data /var/www/$domain
 
 echo "Creating DB"
 mysql <<EOF
@@ -26,7 +27,7 @@ EOF
 mysqldump $init_db_name | mysql $db_name;
 
 echo "Updating configuration"
-cd /var/www/$domain/html
+cd /var/www/$domain/public
 sudo rm wp-config.php
 sudo -u www-data wp config create --dbname=$db_name --dbuser=$db_user --dbpass=$db_password
 sudo -u www-data wp search-replace "https://$init_domain" "https://$domain" --recurse-objects --skip-columns=guid --skip-tables=wp_users

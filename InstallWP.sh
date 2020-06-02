@@ -6,36 +6,50 @@ db_name="${domain//./_}"
 db_user=$db_name
 db_password=$(openssl rand -base64 32)
 
-if [ -d "/var/www/$domain/html" ]; then
+if [ -d "/var/www/$domain" ]; then
   echo "Website seems to already exists. Better run delete beforehand. Aborting script."
   exit 1
 fi
 
 echo "Creating folder"
-mkdir -p /var/www/$domain/html
-chown -R $SUDO_USER:$SUDO_USER /var/www/$domain
+mkdir -p /var/www/$domain/public
+mkdir -p /var/www/$domain/logs
+chown -R www-data:www-data /var/www/$domain
 chmod -R 755 /var/www/$domain
 touch /etc/nginx/sites-available/$domain
+
+echo "Creating SSL certificates"
+certbot --nginx certonly -d $domain -d www.$domain
 
 echo "Creating NGINX configuration file"
 cat > /etc/nginx/sites-available/$domain <<EOF
 server {
-    listen 80;
-    listen [::]:80;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
 
-    root /var/www/$domain/html;
-    index index.php index.html index.htm index.nginx-debian.html;
+    server_name $domain;
 
-    server_name $domain www.$domain;
+    ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    access_log /var/www/$domain/logs/access.log;
+    error_log /var/www/$domain/logs/error.log;
+
+    root /var/www/$domain/public;
+    index index.php;
 
     location / {
-        #try_files \$uri \$uri/ =404;
         try_files \$uri \$uri/ /index.php\$is_args\$args;
     }
 		
 	location ~ \.php\$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+        try_files \$uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)\$;
+        fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
     }
 
     location ~ /\.ht {
@@ -49,6 +63,27 @@ server {
         log_not_found off;
     }
 }
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    server_name www.$domain;
+
+    ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
+
+    return 301 https://$domain\$request_uri;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name $domain www.$domain;
+
+    return 301 https://$domain\$request_uri;
+}
+
 EOF
 ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
 systemctl reload nginx
@@ -62,10 +97,7 @@ FLUSH PRIVILEGES;
 EOF
 
 echo "Downloading and installing Wordpress"
-cd /var/www/$domain/html
-sudo -u $SUDO_USER wp core download --locale=fr_BE
-sudo -u $SUDO_USER wp core config --dbname=$db_name --dbuser=$db_user --dbpass=$db_password
-
-echo "Finalizing installation"
-chown -R www-data:www-data /var/www/$domain/html
+cd /var/www/$domain/public
+sudo -u www-data wp core download --locale=fr_BE
+sudo -u www-data wp core config --dbname=$db_name --dbuser=$db_user --dbpass=$db_password
 
