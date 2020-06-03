@@ -12,7 +12,7 @@ init_db_name="${init_domain//./_}"
 echo "Copying files"
 rm -rf /var/www/$domain
 mkdir -p /var/www/$domain/logs
-cp -rf /var/www/$init_domain/html /var/www/$domain/html
+cp -rf /var/www/$init_domain/public /var/www/$domain/public
 chown -R www-data:www-data /var/www/$domain
 
 echo "Creating DB"

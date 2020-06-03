@@ -8,7 +8,6 @@ db_user=$db_name
 echo "Removing folders"
 rm -rf /var/www/$domain
 
-
 echo "Removing NGINX configuration file"
 rm /etc/nginx/sites-enabled/$domain
 rm /etc/nginx/sites-available/$domain
