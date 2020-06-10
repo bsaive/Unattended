@@ -3,24 +3,9 @@
 echo Enter domain name :
 read domain
 db_name="${domain//./_}"
-db_user=$db_name
-db_password=$(openssl rand -base64 32)
 
-if [ -d "/var/www/$domain" ]; then
-  echo "Website seems to already exists. Better run delete beforehand. Aborting script."
-  exit 1
-fi
-
-echo "Creating folder"
-mkdir -p /var/www/$domain/public
-mkdir -p /var/www/$domain/logs
-mkdir -p /var/www/$domain/backups
-chown -R www-data:www-data /var/www/$domain
-chmod -R 755 /var/www/$domain
-touch /etc/nginx/sites-available/$domain
-
-echo "Creating SSL certificates"
-certbot --nginx certonly -d $domain -d www.$domain
+rm /etc/nginx/sites-enabled/$domain
+rm /etc/nginx/sites-available/$domain
 
 echo "Creating NGINX configuration file"
 cat > /etc/nginx/sites-available/$domain <<EOF
@@ -55,7 +40,7 @@ server {
     error_log /var/www/$domain/logs/error.log;
     
     # Default server block rules
-	# include /etc/nginx/global/server/defaults.conf;
+	include /etc/nginx/global/server/defaults.conf;
 
 	# Fastcgi cache rules
 	include global/server/fastcgi-cache.conf;
@@ -65,6 +50,9 @@ server {
 
     location / {
         try_files \$uri \$uri/ /index.php\$is_args\$args;
+        # Uncomment these 2 lines to add password controlled access to your website. Useful for dev
+        # auth_basic "Restricted Content";
+        # auth_basic_user_file /var/www/dev.lestempsmeles.be/.htpasswd;
     }
 		
 	location ~ \.php\$ {
@@ -133,40 +121,3 @@ server {
 EOF
 ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
 systemctl reload nginx
-
-echo "Creating DB"
-mysql <<EOF
-CREATE USER '$db_user'@'localhost' IDENTIFIED BY '$db_password';
-CREATE DATABASE $db_name DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;
-GRANT ALL ON $db_name.* TO '$db_user'@'localhost';
-FLUSH PRIVILEGES;
-EOF
-
-echo "Downloading and installing Wordpress"
-cd /var/www/$domain/public
-sudo -u www-data wp core download --locale=fr_BE
-sudo -u www-data wp config create --dbname=$db_name --dbuser=$db_user --dbpass=$db_password --extra-php <<PHP
-define('DISABLE_WP_CRON', true);
-PHP
-
-echo "Setting up backups"
-sudo -u www-data cat > /var/www/$domain/backup.sh <<EOF
-#!/bin/bash
-
-cd /var/www/$domain/public
-
-# Backup database
-wp db export ../backups/`date +%Y%m%d`_database.sql --add-drop-table
-
-# Backup uploads directory
-tar -zcf ../backups/`date +%Y%m%d`_uploads.tar.gz *
-EOF
-chmod -R 755 /var/www/$domain/backup.sh
-
-echo "Setting up server-side cron settings"
-croncmd="cd /var/www/$domain/public; /usr/local/bin/wp cron event run --due-now >/dev/null 2>&1"
-cronjob="*/5 * * * * $croncmd"
-( crontab -u www-data -l | grep -v -F "$croncmd" ; echo "$cronjob" ) | crontab -u www-data -
-croncmd="sh /var/www/$domain/backup.sh >/dev/null 2>&1"
-cronjob="*0 5 * * 0 $croncmd"
-( crontab -u www-data -l | grep -v -F "$croncmd" ; echo "$cronjob" ) | crontab -u www-data -

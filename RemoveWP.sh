@@ -20,4 +20,10 @@ DROP DATABASE $db_name;
 FLUSH PRIVILEGES;
 EOF
 
+echo "Removing server-side cron settings"
+croncmd="cd /var/www/$domain/public; /usr/local/bin/wp cron event run --due-now >/dev/null 2>&1"
+( crontab -u www-data -l | grep -v -F "$croncmd") | crontab -u www-data -
+croncmd="sh /var/www/$domain/backup.sh >/dev/null 2>&1"
+( crontab -u www-data -l | grep -v -F "$croncmd") | crontab -u www-data -
+
 echo "Done"
