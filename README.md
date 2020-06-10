@@ -12,6 +12,10 @@ Most of this is based on the great tutorial of SignupWP available here : https:/
 
 If you wanted to set up a server, here are the needed steps to get it up and running :
 
+# Spin up a droplet, a Vultr server, whatever on Ubuntu 20.04
+
+Follow the steps of you VPS provider, and logon with SSH on your server as root.
+
 # Update your server
 
 apt-get update
@@ -19,8 +23,8 @@ apt-get dist-upgrade
 
 # Create a non-root user and give him SUDO rights 
 
-adduser USERNAME
-usermod -aG sudo USERNAME
+adduser YOUR_USERNAME
+usermod -aG sudo YOUR_USERNAME
 
 # Activate the firewall
 ufw allow OpenSSH
