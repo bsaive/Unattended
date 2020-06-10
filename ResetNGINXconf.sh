@@ -28,9 +28,6 @@ server {
     # Paths to certificate files.
     ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
-    # Created by certbot. Useful ? -> To check.
-    # include /etc/letsencrypt/options-ssl-nginx.conf;
-    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
     
     # File to be used as index
     index index.php;
@@ -40,7 +37,7 @@ server {
     error_log /var/www/$domain/logs/error.log;
     
     # Default server block rules
-	include /etc/nginx/global/server/defaults.conf;
+	include global/server/defaults.conf;
 
 	# Fastcgi cache rules
 	include global/server/fastcgi-cache.conf;
@@ -52,7 +49,7 @@ server {
         try_files \$uri \$uri/ /index.php\$is_args\$args;
         # Uncomment these 2 lines to add password controlled access to your website. Useful for dev
         # auth_basic "Restricted Content";
-        # auth_basic_user_file /var/www/dev.lestempsmeles.be/.htpasswd;
+        # auth_basic_user_file /var/www/$domain/.htpasswd;
     }
 		
 	location ~ \.php\$ {
@@ -67,31 +64,11 @@ server {
         fastcgi_cache_bypass \$skip_cache;
         fastcgi_no_cache \$skip_cache;
 
-
-        # OLD STUFF - To delete if it works
-        # fastcgi_split_path_info ^(.+\.php)(/.+)\$;
-        # fastcgi_pass unix:/run/php/php7.4-fpm.sock;
-        # fastcgi_index index.php;
-        # fastcgi_cache_bypass $skip_cache;
-        # fastcgi_no_cache $skip_cache;
-
-
         # Define memory zone for caching. Should match key_zone in fastcgi_cache_path above.
         fastcgi_cache $domain;
 
         # Define caching time.
         fastcgi_cache_valid 60m;
-    }
-
-    location ~ /\.ht {
-        deny all;
-    }
-	
-	location = /favicon.ico { log_not_found off; access_log off; }
-    location = /robots.txt { log_not_found off; access_log off; allow all; }
-    location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
-        expires max;
-        log_not_found off;
     }
 }
 
@@ -101,9 +78,6 @@ server {
     listen [::]:443 ssl http2;
 
     server_name www.$domain;
-
-    ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
 
     return 301 https://$domain\$request_uri;
 }

@@ -10,11 +10,10 @@ db_password=$(openssl rand -base64 32)
 init_db_name="${init_domain//./_}"
 
 echo "Copying files"
-rm -rf /var/www/$domain/logs
-rm -rf /var/www/$domain/public
-rm -rf /var/www/$domain/cache
-mkdir -p /var/www/$domain/logs
-cp -rf /var/www/$init_domain/public /var/www/$domain/public
+rm -rf /var/www/$domain/logs/*
+rm -rf /var/www/$domain/public/*
+rm -rf /var/www/$domain/cache/*
+cp -rf /var/www/$init_domain/public/* /var/www/$domain/public/
 chown -R www-data:www-data /var/www/$domain
 
 echo "Creating DB"
@@ -36,3 +35,4 @@ define('DISABLE_WP_CRON', true);
 PHP
 sudo -u www-data wp search-replace "https://$init_domain" "https://$domain" --recurse-objects --skip-columns=guid --skip-tables=wp_users
 sudo -u www-data wp search-replace "http://$init_domain" "http://$domain" --recurse-objects --skip-columns=guid --skip-tables=wp_users
+sudo -u www-data wp search-replace "/var/www/$init_domain/cache" "/var/www/$domain/cache" --recurse-objects --skip-columns=guid --skip-tables=wp_users 
