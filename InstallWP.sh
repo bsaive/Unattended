@@ -140,10 +140,10 @@ sudo -u www-data cat > /var/www/$domain/backup.sh <<EOF
 cd /var/www/$domain/public
 
 # Backup database
-wp db export ../backups/`date +%Y%m%d`_database.sql --add-drop-table
+/usr/local/bin/wp db export ../backups/\`date +%Y%m%d\`_database.sql --add-drop-table
 
 # Backup uploads directory
-tar -zcf ../backups/`date +%Y%m%d`_uploads.tar.gz *
+tar -zcf ../backups/\`date +%Y%m%d\`_data.tar.gz *
 EOF
 chmod -R 755 /var/www/$domain/backup.sh
 
